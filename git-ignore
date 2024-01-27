@@ -1,0 +1,10 @@
+#! /usr/bin/env bash
+
+pattern=$1
+
+if [ -z "$pattern" ]; then
+  echo "Usage: git ignore <pattern>"
+  exit 1
+fi
+
+echo "$pattern" >> ".gitignore"

@@ -1,0 +1,24 @@
+#! /usr/bin/env bash
+
+readonly onto=$1
+
+if [ -z "$onto" ]; then
+    echo "Usage: git graft <receiving-commit>"
+    exit 1
+fi
+
+readonly graftee=${2:-$(git rev-parse --abbrev-ref HEAD)}
+fork_point=$(git merge-base --fork-point "$onto" "$graftee")
+if [ -z "$fork_point" ]; then
+    # Could not find a normal fork point; $graftee must not have branched off $onto
+    fork_point=$(git merge-base "$onto" "$graftee")
+    if [ -z "$fork_point" ]; then
+        echo "Could not find fork point between $graftee and $onto"
+        exit 2
+    fi
+fi
+
+set -e
+git rebase --onto "$onto" "$fork_point" "$graftee"
+git branch -f "$graftee"
+git switch "$graftee"
