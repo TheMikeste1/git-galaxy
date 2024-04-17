@@ -2,9 +2,9 @@
 
 pattern=$1
 
-if [ -z "$pattern" ]; then
+if [[ -z "${pattern}" ]]; then
   echo "Usage: git ignore <pattern>"
   exit 1
 fi
 
-echo "$pattern" >> ".gitignore"
+echo "${pattern}" >> ".gitignore"

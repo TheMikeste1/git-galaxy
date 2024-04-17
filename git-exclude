@@ -2,7 +2,7 @@
 
 pattern=$1
 
-if [ -z "$pattern" ]; then
+if [[ -z "${pattern}" ]]; then
   echo "Usage: git exclude <pattern>"
   exit 1
 fi
@@ -10,4 +10,4 @@ fi
 exclude_file="$(git config --local core.excludesFile)"
 exclude_file="${exclude_file:-$(git rev-parse --git-common-dir)/info/exclude}"
 
-echo "$pattern" >> "$exclude_file"
+echo "${pattern}" >> "${exclude_file}"
