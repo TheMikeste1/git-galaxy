@@ -28,5 +28,5 @@ git merge -n --squash "${thwompee}" > /dev/null
 git commit --quiet -nm "${commit_msg}"
 git branch --quiet -f "${thwompee}"
 git switch --quiet "${thwompee}"
-echo "Thwomped ${count} commits from ${twompee} onto ${onto}."
+echo "Thwomped ${count} commits from ${thwompee} onto ${onto}."
 
