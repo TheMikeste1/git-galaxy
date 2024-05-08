@@ -21,7 +21,7 @@ fi
 
 set -e
 
-readonly count=$(($(git rev-list --count ${fork_point}..${thwompee}) - 1))
+readonly count=$(($(git rev-list --count ${fork_point}..${thwompee})))
 
 git switch --quiet "${onto}" --detach
 git merge -n --squash "${thwompee}" > /dev/null
