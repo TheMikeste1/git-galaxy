@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
 readonly onto=$1
 readonly commit_msg=$2
