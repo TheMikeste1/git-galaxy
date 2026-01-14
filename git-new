@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+readonly issue_id=$1
+
+if [[ -z ${issue_id} ]]; then
+    echo "Usage: git new <issue-id>"
+    exit 1
+fi
+
+possible_branches_str="$(git branch --format='%(refname:short)' | grep "$issue_id")"
+IFS=$'\n' read -rd '' -a possible_branches <<< "$possible_branches_str"
+if [[ ${#possible_branches[@]} -gt 1 ]]; then
+    echo "Too many branches found for ${issue_id}"
+    exit 1
+elif [[ ${#possible_branches[@]} -eq 0 ]]; then
+    # We don't have the branch locally; check on the origin
+    possible_branches_str="$(git branch -a --format='%(refname:short)' | grep "$issue_id")"
+    IFS=$'\n' read -rd '' -a possible_branches <<< "$possible_branches_str"
+    if [[ ${#possible_branches[@]} -gt 1 ]]; then
+        echo "Too many branches found for ${issue_id}"
+        exit 1
+    elif [[ ${#possible_branches[@]} -eq 0 ]]; then
+        echo "Cannot find branch for $issue_id"
+        exit 1
+    fi
+fi
+
+readonly branch="${possible_branches[0]#origin/}"
+readonly path="$(git worktree list | head -1 | cut -d' ' -f1)-${issue_id}"
+if ! git worktree add "$path" "$branch"; then
+    echo "Failed to create new worktree"
+    exit 1
+fi
+
+if [[ -d "./.vscode" ]]; then
+    cp -r "./.vscode" "${path}/"
+fi
+if [[ -f "./lefthook.yml" ]]; then
+    cp "./lefthook.yml" "${path}/"
+fi
+
+git -C "${path}" submodule update --init --recursive --jobs="$(nproc)"
+echo "New worktree for ${issue_id} initialized at ${path}"
