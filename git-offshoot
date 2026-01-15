@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TMP_DIR="$(mktemp -d /tmp/git-detach.XXXXXX)"
+OLD_GIT=".git.old"
+
+cleanup() {
+    rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
+
+git_dir="$(git rev-parse --git-dir)"
+common_dir="$(git rev-parse --git-common-dir)"
+
+if [ "$git_dir" = "$common_dir" ]; then
+    echo "Refusing: already main worktree"
+    exit 1
+fi
+
+if [ ! -f "$git_dir/commondir" ]; then
+    echo "Refusing: gitdir is not a worktree metadata dir: $git_dir"
+    exit 1
+fi
+
+branch="$(git symbolic-ref --short HEAD || echo detached)"
+
+# Capture all remotes
+mapfile -t REMOTES < <(git remote)
+
+declare -A REMOTE_URLS
+for r in "${REMOTES[@]}"; do
+    REMOTE_URLS["$r"]="$(git remote get-url "$r")"
+done
+
+echo "Detaching worktree on branch: $branch"
+echo "Remotes: ${REMOTES[*]:-(none)}"
+
+# Clone history cleanly
+git clone --no-local --no-hardlinks "$PWD" "$TMP_DIR"
+
+# Preserve index
+cp -a .git/index "$TMP_DIR/.git/index" 2>/dev/null || true
+
+# Atomic swap
+mv .git "$OLD_GIT"
+mv "$TMP_DIR/.git" ./
+
+# Restore remotes
+for r in "${REMOTES[@]}"; do
+    git remote remove "$r" 2>/dev/null || true
+    git remote add "$r" "${REMOTE_URLS[$r]}"
+done
+
+# Restore branch
+if [ "$branch" != "detached" ]; then
+    git checkout -B "$branch"
+fi
+
+# Cleanup worktree metadata
+rm -rf "$git_dir"
+git worktree prune >/dev/null 2>&1 || true
+
+rm -rf "$OLD_GIT"
+
+echo "Worktree successfully detached into standalone repository."
