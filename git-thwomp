@@ -9,11 +9,11 @@ if [[ -z ${onto} ]] || [[ -z ${commit_msg} ]]; then
 fi
 
 readonly thwompee=${3:-$(git rev-parse --abbrev-ref HEAD)}
-fork_point=$(git merge-base --fork-point "${onto}" "${thwompee}")
-if [[ -z "${fork_point}" ]]; then
+fork_point=$(git merge-base --fork-point "$onto" "$thwompee")
+if [[ -z "$fork_point" ]]; then
     # Could not find a normal fork point; $thwompee must not have branched off $onto
-    fork_point=$(git merge-base "${onto}" "${thwompee}")
-    if [[ -z "${fork_point}" ]]; then
+    fork_point=$(git merge-base "$onto" "$thwompee")
+    if [[ -z "$fork_point" ]]; then
         echo "Could not find fork point between ${thwompee} and ${onto}"
         exit 2
     fi
@@ -21,12 +21,17 @@ fi
 
 set -e
 
-readonly count=$(($(git rev-list --count ${fork_point}..${thwompee})))
+readonly original_branch="$thwompee"
+cleanup() {
+    git switch --quiet "$original_branch"
+}
+trap cleanup ERR INT TERM
 
-git switch --quiet "${onto}" --detach
-git merge -n --squash "${thwompee}" > /dev/null
-git commit --quiet -nm "${commit_msg}"
-git branch --quiet -f "${thwompee}"
-git switch --quiet "${thwompee}"
+readonly count=$(($(git rev-list --count "$fork_point..$thwompee")))
+
+git switch --quiet "$onto" --detach
+git merge -n --squash "$thwompee" > /dev/null
+git commit --quiet -nm "$commit_msg"
+git branch --quiet -f "$thwompee"
+git switch --quiet "$thwompee"
 echo "Thwomped ${count} commits from ${thwompee} onto ${onto}."
-
