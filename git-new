@@ -26,7 +26,8 @@ elif [[ ${#possible_branches[@]} -eq 0 ]]; then
 fi
 
 readonly branch="${possible_branches[0]#origin/}"
-readonly path="$(git worktree list | head -1 | cut -d' ' -f1)-${issue_id}"
+readonly root_path="$(git worktree list | head -1 | cut -d' ' -f1)"
+readonly path="${root_path%/*}/${issue_id}-${root_path##*/}"
 if ! git worktree add "$path" "$branch"; then
     echo "Failed to create new worktree"
     exit 1
@@ -39,5 +40,5 @@ if [[ -f "./lefthook.yml" ]]; then
     cp "./lefthook.yml" "${path}/"
 fi
 
-git -C "${path}" submodule update --init --recursive --jobs="$(nproc)"
+git -C "$path" submodule update --init --recursive --jobs="$(nproc)"
 echo "New worktree for ${issue_id} initialized at ${path}"
