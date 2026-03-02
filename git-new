@@ -44,9 +44,16 @@ if [[ $independent == true ]]; then
         echo "Failed to determine origin remote URL"
         exit 1
     fi
-    if ! git clone --single-branch --branch "$branch" "$origin_url" "$path"; then
+    if ! git clone --branch "$branch" "$origin_url" "$path"; then
         echo "Failed to clone repository"
         exit 1
+    fi
+
+    # Create a local branch tracking the origin's default branch (e.g., develop, master, main, etc.)
+    default_branch=$(git -C "$path" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+    if [[ -n $default_branch ]]; then
+        git -C "$path" checkout -b "$default_branch" "origin/$default_branch"
+        git -C "$path" checkout "$branch"
     fi
 else
     # Create a worktree (default behavior).
@@ -62,6 +69,11 @@ if [[ -d "./.vscode" ]]; then
 fi
 if [[ -f "./lefthook.yml" ]]; then
     cp "./lefthook.yml" "${path}/"
+    if [[ $independent == true ]]; then
+        pushd "${path}/" || exit 1
+        lefthook install
+        popd || exit 1
+    fi
 fi
 
 git -C "$path" submodule update --init --recursive --jobs="$(nproc)"
