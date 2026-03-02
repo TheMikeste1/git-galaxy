@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 
 readonly issue_id=$1
+readonly mode_flag=$2
 
 if [[ -z ${issue_id} ]]; then
-    echo "Usage: git new <issue-id>"
+    echo "Usage: git new <issue-id> [--independent|-i]"
     exit 1
 fi
+
+# Determine if independent mode is requested.
+independent=false
+if [[ "$mode_flag" == "--independent" || "$mode_flag" == "-i" ]]; then
+    independent=true
+fi
+readonly independent
 
 possible_branches_str="$(git branch --format='%(refname:short)' | grep "$issue_id")"
 IFS=$'\n' read -rd '' -a possible_branches <<< "$possible_branches_str"
@@ -28,11 +36,27 @@ fi
 readonly branch="${possible_branches[0]#origin/}"
 readonly root_path="$(git worktree list | head -1 | cut -d' ' -f1)"
 readonly path="${root_path%/*}/${issue_id}-${root_path##*/}"
-if ! git worktree add "$path" "$branch"; then
-    echo "Failed to create new worktree"
-    exit 1
+
+if [[ $independent == true ]]; then
+    # Clone the repository into an independent directory.
+    origin_url=$(git remote get-url origin 2>/dev/null || true)
+    if [[ -z ${origin_url} ]]; then
+        echo "Failed to determine origin remote URL"
+        exit 1
+    fi
+    if ! git clone --single-branch --branch "$branch" "$origin_url" "$path"; then
+        echo "Failed to clone repository"
+        exit 1
+    fi
+else
+    # Create a worktree (default behavior).
+    if ! git worktree add "$path" "$branch"; then
+        echo "Failed to create new worktree"
+        exit 1
+    fi
 fi
 
+# Copy optional VS Code settings and hook configuration.
 if [[ -d "./.vscode" ]]; then
     cp -r "./.vscode" "${path}/"
 fi
@@ -41,4 +65,9 @@ if [[ -f "./lefthook.yml" ]]; then
 fi
 
 git -C "$path" submodule update --init --recursive --jobs="$(nproc)"
-echo "New worktree for ${issue_id} initialized at ${path}"
+
+if [[ $independent == true ]]; then
+    echo "Independent repository for ${issue_id} initialized at ${path}"
+else
+    echo "New worktree for ${issue_id} initialized at ${path}"
+fi
