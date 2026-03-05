@@ -48,13 +48,6 @@ if [[ $independent == true ]]; then
         echo "Failed to clone repository"
         exit 1
     fi
-
-    # Create a local branch tracking the origin's default branch (e.g., develop, master, main, etc.)
-    default_branch=$(git -C "$path" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
-    if [[ -n $default_branch ]]; then
-        git -C "$path" checkout -b "$default_branch" "origin/$default_branch"
-        git -C "$path" checkout "$branch"
-    fi
 else
     # Create a worktree (default behavior).
     if ! git worktree add "$path" "$branch"; then
