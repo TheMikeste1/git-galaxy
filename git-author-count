@@ -3,6 +3,7 @@
 import subprocess
 import sys
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 
@@ -58,7 +59,6 @@ def get_file_authors(file: str) -> Optional[Counter[str]]:
 def main() -> int:
     submodules = get_submodule_paths()
     if submodules is None:
-        # Failed to get submodules
         return -1
 
     git_files_proc = subprocess.run(["git", "ls-files"],
@@ -68,14 +68,20 @@ def main() -> int:
     if git_files_proc.returncode != 0:
         return -2
 
+    files = [
+        f for f in git_files_proc.stdout.splitlines() if f not in submodules
+    ]
+
     author_counts: Counter[str] = Counter()
-    for file in filter(lambda f: f not in submodules,
-                       git_files_proc.stdout.splitlines()):
-        counts = get_file_authors(file)
-        if counts is None:
-            # TODO: Log
-            continue
-        author_counts = author_counts + counts
+    with ThreadPoolExecutor() as executor:
+        future_to_file = {
+            executor.submit(get_file_authors, f): f
+            for f in files
+        }
+        for future in as_completed(future_to_file):
+            counts = future.result()
+            if counts:
+                author_counts += counts
 
     for author, count in author_counts.most_common():
         print(author, count)
