@@ -21,7 +21,7 @@ def get_submodule_paths() -> Optional[set[str]]:
         line = line[len(" ######################################## "):]
         # path<maybe_space><maybe_other>
         submodule = line
-        if line.endswith(')'): # There's an "other"
+        if line.endswith(')'):  # There's an "other"
             parts = line.split(' ')
             submodule = ' '.join(parts[0:-1])
         submodules.add(submodule)
@@ -63,6 +63,17 @@ def get_file_authors(file: str) -> Optional[Counter[str]]:
 
 
 def main() -> int:
+
+    # Ensure we are inside a git repository
+    try:
+        subprocess.run(["git", "rev-parse", "--is-inside-work-tree"],
+                       capture_output=True,
+                       text=True,
+                       check=True)
+    except subprocess.CalledProcessError:
+        print("Not a git repository.", file=sys.stderr)
+        return -3
+
     submodules = get_submodule_paths()
     if submodules is None:
         return -1
