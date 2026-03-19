@@ -14,13 +14,19 @@ def get_submodule_paths() -> Optional[set[str]]:
                             check=True)
     if result.returncode != 0:
         return None
-    submodules = []
+    submodules = set()
     for line in result.stdout.splitlines():
-        parts = line.split(' ')
-        # <space> hash path other
-        submodule = ' '.join(parts[2:-1])
-        submodules.append(submodule)
-    return set(submodules)
+        # <indicator>hash path<maybe_space><maybe_other>
+        # Skip the indicator and hash
+        line = line[len(" ######################################## "):]
+        # path<maybe_space><maybe_other>
+        submodule = line
+        if line.endswith(')'): # There's an "other"
+            parts = line.split(' ')
+            submodule = ' '.join(parts[0:-1])
+        submodules.add(submodule)
+
+    return submodules
 
 
 def get_file_authors(file: str) -> Optional[Counter[str]]:
