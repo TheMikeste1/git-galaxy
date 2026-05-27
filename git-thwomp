@@ -21,17 +21,21 @@ fi
 
 set -e
 
-readonly original_branch="$thwompee"
 cleanup() {
-    git switch --quiet "$original_branch"
+    git switch --quiet "$thwompee"
 }
-trap cleanup ERR INT TERM
+trap cleanup EXIT ERR INT TERM
 
 readonly count=$(($(git rev-list --count "$fork_point..$thwompee")))
 
 git switch --quiet "$onto" --detach
-git merge -n --squash "$thwompee" > /dev/null
+if ! git merge -n --squash "$thwompee" > /dev/null 2>&1; then
+    if ! git merge --abort 2>/dev/null; then
+        git reset --hard HEAD
+    fi
+    echo "Merge conflict detected – merge aborted and changes reverted." >&2
+    exit 3
+fi
 git commit --quiet -nm "$commit_msg"
 git branch --quiet -f "$thwompee"
-git switch --quiet "$thwompee"
 echo "Thwomped ${count} commits from ${thwompee} onto ${onto}."
