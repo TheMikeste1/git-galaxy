@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
+# TODO: Proper arg handling
 readonly issue_id=$1
 readonly mode_flag=$2
+readonly force_flag=$3
 
 if [[ -z ${issue_id} ]]; then
-    echo "Usage: git new <issue-id> [--independent|-i]"
+    echo "Usage: git new <issue-id> [--independent|-i] [--force|-f]"
     exit 1
 fi
 
@@ -15,12 +17,21 @@ if [[ "$mode_flag" == "--independent" || "$mode_flag" == "-i" ]]; then
 fi
 readonly independent
 
+force=false
+if [[ "$force_flag" == "--force" || "$force_flag" == "-f" ]]; then
+    force=true
+fi
+readonly force
+
 possible_branches_str="$(git branch --format='%(refname:short)' | grep "$issue_id")"
 IFS=$'\n' read -rd '' -a possible_branches <<< "$possible_branches_str"
 if [[ ${#possible_branches[@]} -gt 1 ]]; then
     echo "Too many branches found for ${issue_id}"
     exit 1
 elif [[ ${#possible_branches[@]} -eq 0 ]]; then
+  if [[ "$force" == true ]]; then
+    possible_branches=(develop )
+  else
     # We don't have the branch locally; check on the origin
     possible_branches_str="$(git branch -a --format='%(refname:short)' | grep "$issue_id")"
     IFS=$'\n' read -rd '' -a possible_branches <<< "$possible_branches_str"
@@ -31,6 +42,7 @@ elif [[ ${#possible_branches[@]} -eq 0 ]]; then
         echo "Cannot find branch for $issue_id"
         exit 1
     fi
+  fi
 fi
 
 readonly branch="${possible_branches[0]#origin/}"
