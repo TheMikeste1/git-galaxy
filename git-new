@@ -1,33 +1,45 @@
 #!/usr/bin/env bash
 
-# TODO: Proper arg handling
-readonly issue_id=$1
-readonly mode_flag=$2
-readonly force_flag=$3
+usage() {
+  echo "Usage: git new [OPTIONS] <issue-id>"
+  echo '  -h, --help         Display this help message'
+  echo '  -f, --force        Force cloning, even if issue does not exist'
+  echo '  -i, --independent  Create a fresh clone instead of a worktree'
+  exit 1
+}
 
-if [[ -z ${issue_id} ]]; then
-    echo "Usage: git new <issue-id> [--independent|-i] [--force|-f]"
-    exit 1
-fi
-
-# Determine if independent mode is requested.
-independent=false
-if [[ "$mode_flag" == "--independent" || "$mode_flag" == "-i" ]]; then
-    independent=true
-fi
-readonly independent
-
+issue_id=
 force=false
-if [[ "$force_flag" == "--force" || "$force_flag" == "-f" ]]; then
-    force=true
-fi
+independent=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -f|--force)
+      force=true
+      shift
+      ;;
+    -i|--independent)
+      independent=true
+      shift
+      ;;
+    -*)
+      echo "Error: Unknown option $1" >&2
+      usage
+      ;;
+    *)
+      issue_id="$1"
+      shift
+      ;;
+  esac
+done
+readonly issue_id
 readonly force
+readonly independent
 
 possible_branches_str="$(git branch --format='%(refname:short)' | grep "$issue_id")"
 IFS=$'\n' read -rd '' -a possible_branches <<< "$possible_branches_str"
 if [[ ${#possible_branches[@]} -gt 1 ]]; then
-    echo "Too many branches found for ${issue_id}"
-    exit 1
+  echo "Too many branches found for ${issue_id}"
+  exit 1
 elif [[ ${#possible_branches[@]} -eq 0 ]]; then
   if [[ "$force" == true ]]; then
     possible_branches=(develop )
@@ -36,11 +48,11 @@ elif [[ ${#possible_branches[@]} -eq 0 ]]; then
     possible_branches_str="$(git branch -a --format='%(refname:short)' | grep "$issue_id")"
     IFS=$'\n' read -rd '' -a possible_branches <<< "$possible_branches_str"
     if [[ ${#possible_branches[@]} -gt 1 ]]; then
-        echo "Too many branches found for ${issue_id}"
-        exit 1
+      echo "Too many branches found for ${issue_id}"
+      exit 1
     elif [[ ${#possible_branches[@]} -eq 0 ]]; then
-        echo "Cannot find branch for $issue_id"
-        exit 1
+      echo "Cannot find branch for $issue_id"
+      exit 1
     fi
   fi
 fi
@@ -50,41 +62,41 @@ readonly root_path="$(git worktree list | head -1 | cut -d' ' -f1)"
 readonly path="${root_path%/*}/${issue_id}-${root_path##*/}"
 
 if [[ $independent == true ]]; then
-    # Clone the repository into an independent directory.
-    origin_url=$(git remote get-url origin 2>/dev/null || true)
-    if [[ -z ${origin_url} ]]; then
-        echo "Failed to determine origin remote URL"
-        exit 1
-    fi
-    if ! git clone --branch "$branch" "$origin_url" "$path"; then
-        echo "Failed to clone repository"
-        exit 1
-    fi
+  # Clone the repository into an independent directory.
+  origin_url=$(git remote get-url origin 2>/dev/null || true)
+  if [[ -z ${origin_url} ]]; then
+    echo "Failed to determine origin remote URL"
+    exit 1
+  fi
+  if ! git clone --branch "$branch" "$origin_url" "$path"; then
+    echo "Failed to clone repository"
+    exit 1
+  fi
 else
-    # Create a worktree (default behavior).
-    if ! git worktree add "$path" "$branch"; then
-        echo "Failed to create new worktree"
-        exit 1
-    fi
+  # Create a worktree (default behavior).
+  if ! git worktree add "$path" "$branch"; then
+    echo "Failed to create new worktree"
+    exit 1
+  fi
 fi
 
 # Copy optional VS Code settings and hook configuration.
 if [[ -d "./.vscode" ]]; then
-    cp -r "./.vscode" "${path}/"
+  cp -r "./.vscode" "${path}/"
 fi
 if [[ -f "./lefthook.yml" ]]; then
-    cp "./lefthook.yml" "${path}/"
-    if [[ $independent == true ]]; then
-        pushd "${path}/" || exit 1
-        lefthook install
-        popd || exit 1
-    fi
+  cp "./lefthook.yml" "${path}/"
+  if [[ $independent == true ]]; then
+    pushd "${path}/" || exit 1
+    lefthook install
+    popd || exit 1
+  fi
 fi
 
 git -C "$path" submodule update --init --recursive --jobs="$(nproc)"
 
 if [[ $independent == true ]]; then
-    echo "Independent repository for ${issue_id} initialized at ${path}"
+  echo "Independent repository for ${issue_id} initialized at ${path}"
 else
-    echo "New worktree for ${issue_id} initialized at ${path}"
+  echo "New worktree for ${issue_id} initialized at ${path}"
 fi
