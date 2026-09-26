@@ -1,0 +1,11 @@
+---
+cpp:
+  skip: [merge]
+  parallel: true
+  commands:
+    clang-format:
+      glob: '*.{{h,c}{pp,xx,},tpp}'
+      run: bash -c "~/.githooks/scripts/pre-commit/clang-format.sh {staged_files}"
+    cppcheck:
+      glob: '*.{{h,c}{pp,xx,},tpp}'
+      run: bash -c "~/.githooks/scripts/pre-commit/cppcheck.sh {staged_files}"

@@ -1,0 +1,11 @@
+---
+rust:
+  skip: [merge]
+  parallel: false
+  commands:
+    rustfmt:
+      glob: '*.rs'
+      run: rustfmt --check --edition 2021 {staged_files} || (rustfmt --edition 2021 {staged_files} && false)
+    clippy:
+      glob: '*.rs'
+      run: cargo clippy --tests -- -D warnings -A dead_code

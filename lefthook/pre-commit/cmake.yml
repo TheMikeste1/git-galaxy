@@ -1,0 +1,11 @@
+---
+cmake:
+  skip: [merge]
+  parallel: false
+  commands:
+    cmake-format:
+      glob: '{CMakeLists.txt,*.cmake}'
+      run: bash -c "~/.githooks/scripts/pre-commit/cmake-format.sh {staged_files}"
+    cmake-lint:
+      glob: '{CMakeLists.txt,*.cmake}'
+      run: bash -c "~/.githooks/scripts/pre-commit/cmake-lint.sh {staged_files}"

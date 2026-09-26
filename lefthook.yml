@@ -1,0 +1,10 @@
+---
+extends:
+  - ./lefthook/hooks_common.yml
+  - ./lefthook/pre-commit/bash.yml
+
+pre-commit:
+  parallel: true
+  commands:
+    bash-precommit:
+      run: LEFTHOOK_QUIET=meta lefthook run bash

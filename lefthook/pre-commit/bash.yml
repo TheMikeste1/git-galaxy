@@ -1,0 +1,13 @@
+---
+bash:
+  skip: [merge]
+  parallel: false
+  commands:
+    shellcheck:
+      glob: '*.{bash,sh}'
+      run: shellcheck -x {staged_files} || (shellcheck -x -f diff {staged_files} | git apply && false)
+    shellharden:
+      glob: '*.{bash,sh}'
+      # Check first, and if it fails replace but don't stage.
+      # End with false so the check still fails.
+      run: shellharden --check -- {staged_files} || (shellharden --replace -- {staged_files} && false)

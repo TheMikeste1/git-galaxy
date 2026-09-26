@@ -1,0 +1,11 @@
+---
+gdscript:
+  skip: [merge]
+  parallel: true
+  commands:
+    gdformat:
+      glob: '*.gd'
+      run: bash -c "~/.githooks/scripts/pre-commit/gdformat.sh {staged_files}"
+    gdlint:
+      glob: '*.gd'
+      run: bash -c "~/.githooks/scripts/pre-commit/gdlint.sh {staged_files}"
