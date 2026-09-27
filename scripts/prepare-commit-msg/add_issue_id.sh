@@ -16,7 +16,7 @@ extract_common_issue_id() {
 
   if [[ -n "$id" ]]
   then
-    echo "#$id"
+    echo "(#$id)"
   fi
 }
 
