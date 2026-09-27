@@ -2,8 +2,8 @@
 prepare-commit-msg:
   skip: [merge]
   commands:
-    add-jira-issue:
-      run: bash -c "$DOTFILES/git-galaxy/scripts/prepare-commit-msg/add_jira_issue.sh {0}"
+    add-issue-id:
+      run: bash -c "$DOTFILES/git-galaxy/scripts/prepare-commit-msg/add_issue_id.sh {0}"
     detect-conflict-markers:
       exclude:
         - "*.patch"
