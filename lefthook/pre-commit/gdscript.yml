@@ -5,7 +5,7 @@ gdscript:
   commands:
     gdformat:
       glob: '*.gd'
-      run: bash -c "~/.githooks/scripts/pre-commit/gdformat.sh {staged_files}"
+      run: bash -c "$DOTFILES/git-galaxy/scripts/pre-commit/gdformat.sh {staged_files}"
     gdlint:
       glob: '*.gd'
-      run: bash -c "~/.githooks/scripts/pre-commit/gdlint.sh {staged_files}"
+      run: bash -c "$DOTFILES/git-galaxy/scripts/pre-commit/gdlint.sh {staged_files}"
