@@ -1,5 +1,5 @@
 ---
-bash:
+pre-commit:
   skip: [merge]
   parallel: false
   commands:

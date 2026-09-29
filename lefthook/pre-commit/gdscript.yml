@@ -1,5 +1,5 @@
 ---
-gdscript:
+pre-commit:
   skip: [merge]
   parallel: true
   commands:

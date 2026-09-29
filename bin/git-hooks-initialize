@@ -15,20 +15,9 @@ YAML_TEMPLATE = Template(
     """---
 extends:
 $extends_list
-
-pre-commit:
-  parallel: true
-  commands:
-$precommit_list
 """
 )
 EXTEND_ITEM_TEMPLATE = Template("  - $extend_item")
-PRECOMMIT_ITEM_TEMPLATE = Template(
-    """\
-    $filetype-precommit:
-      run: LEFTHOOK_QUIET=meta lefthook run $filetype"""
-)
-
 
 class CallableFiletype(Protocol):
     def __call__(self, filepath: Path) -> str:
@@ -128,7 +117,6 @@ def discover_languages(starting_from: Path, filetypes: FiletypeMap) -> set[str]:
 def build_hooks_file(languages: set[str]) -> str:
     lefthook_root = GITHOOKS_ROOT / "lefthook"
     extends = [EXTEND_ITEM_TEMPLATE.substitute(extend_item=lefthook_root / "hooks_common.yml")]
-    precommits = []
 
     precommit_root = lefthook_root / "pre-commit"
     precommit_files = {file.stem for file in precommit_root.glob("*.yml")}
@@ -137,10 +125,8 @@ def build_hooks_file(languages: set[str]) -> str:
             extends.append(
                 EXTEND_ITEM_TEMPLATE.substitute(extend_item=precommit_root / f"{lang}.yml"),
             )
-            precommits.append(PRECOMMIT_ITEM_TEMPLATE.substitute(filetype=lang))
     file_contents = YAML_TEMPLATE.substitute(
         extends_list="\n".join(extends),
-        precommit_list="\n".join(precommits),
     )
     return file_contents
 

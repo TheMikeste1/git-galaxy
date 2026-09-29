@@ -1,5 +1,5 @@
 ---
-cpp:
+pre-commit:
   skip: [merge]
   parallel: true
   commands:

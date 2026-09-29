@@ -5,6 +5,3 @@ extends:
 
 pre-commit:
   parallel: true
-  commands:
-    bash-precommit:
-      run: LEFTHOOK_QUIET=meta lefthook run bash
