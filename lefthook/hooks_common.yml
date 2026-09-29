@@ -8,5 +8,4 @@ prepare-commit-msg:
       exclude:
         - "*.patch"
         - "*.sln"
-      run: bash -c "git diff --staged --check {staged_files} > /dev/null"
-      fail_text: Detected conflict markers, tabs, or trailing whitespace. Run `git diff --staged --check` and fix the issues.
+      run: git --no-pager diff --staged --check {staged_files}
