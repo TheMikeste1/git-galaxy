@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_name="$0" && readonly script_name
+usage() {
+  echo "Usage: $script_name [OPTIONS] <target branch?>"
+  echo '  -h, --help         Display this help message.'
+  echo "  --no-fetch         Don't fetch before prepping the PR."
+  echo '  <target branch?>   The branch onto which the PR will be made,'
+  echo '                     e.g., origin/develop. Defaults to the default'
+  echo '                     branch at the origin.'
+
+  exit "$1"
+}
+
+fetch=true
+onto=
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage 0
+      ;;
+    --no-fetch)
+      fetch=false
+      shift 1
+      ;;
+    -*)
+      echo "Error: Unknown option $1" >&2
+      usage 1
+      ;;
+    *)
+      if [[ -z "$onto" ]]; then
+        onto="$1"
+        shift 1
+      else
+        echo "Already have the target branch!" >&2
+        usage 1
+      fi
+      ;;
+  esac
+done
+readonly fetch
+
+current_branch="$(git branch --show-current)" && readonly current_branch
+declare -ra BRANCHES_TO_SKIP="${BRANCHES_TO_SKIP:=("master" "main" "develop" "test")}"
+for branch in "${BRANCHES_TO_SKIP[@]}"; do
+  if [[ "$branch" == "$current_branch" ]]; then
+    echo "Branch \`$branch\` is on ignored branches list; not prepping a PR"
+    exit 0
+  fi
+done
+
+if [[ "$fetch" == true ]]; then
+  git fetch
+fi
+
+if [[ -z "$onto" ]]; then
+  onto="$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/@@')"
+fi
+readonly onto
+
+tmp_msg="$(mktemp)"
+trap 'rm -f "$tmp_msg"' EXIT
+cz commit --dry-run --write-message-to-file "$tmp_msg"
+
+message=$(cat "$tmp_msg")
+
+script_dir="$(dirname -- "${BASH_SOURCE[0]:-$0}")" && readonly script_dir
+lib_root=$script_dir/../lib && readonly lib_root
+extract_issue_id() {
+  "$lib_root/extract_issue_id.sh" "$@"
+}
+
+id_in_branch="$(extract_issue_id "$current_branch")"
+if [[ "$id_in_branch" != "" ]]; then
+  if [[ "$id_in_branch" == "#"* ]]; then
+    id_in_branch="($id_in_branch)"
+  fi
+  message="$message
+
+Closes $id_in_branch"
+fi
+readonly message
+
+git thwomp "$onto" "$message"

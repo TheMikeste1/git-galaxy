@@ -5,33 +5,6 @@
 # Original source: https://github.com/aitemr/awesome-git-hooks/blob/master/prepare-commit-msg/prepare-commit-msg-jira
 # shellcheck disable=SC2155
 
-extract_jira_issue_id() {
-  grep -Eom1 '[A-Z0-9]{1,10}-[A-Z0-9]+' <<< "$1"
-}
-
-extract_common_issue_id() {
-  local id
-  id=$(grep -Eom1 '[1-9][0-9]*' <<< "$1")
-  readonly id
-
-  if [[ -n "$id" ]]
-  then
-    echo "(#$id)"
-  fi
-}
-
-extract_issue_id() {
-  local origin && origin=$(git remote get-url origin) && readonly origin
-  case "$origin" in
-    *bitbucket*)
-      extract_jira_issue_id "$@"
-      ;;
-    *)
-      extract_common_issue_id "$@"
-      ;;
-  esac
-}
-
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <commit_file>" >&2
   exit 1
@@ -68,20 +41,33 @@ if [[ "$commit_msg" == "fixup"* ]]; then
   exit 0
 fi
 
+script_dir="$(dirname -- "${BASH_SOURCE[0]:-$0}")" && readonly script_dir
+lib_root=$script_dir/../../lib && readonly lib_root
+extract_issue_id() {
+  "$lib_root/extract_issue_id.sh" "$@"
+}
+
 # Extract the ID
-readonly id_in_branch="$(extract_issue_id "$current_branch")"
+id_in_branch="$(extract_issue_id "$current_branch")"
 readonly first_line_in_msg="$(echo "$commit_msg" | head -1)"
 readonly id_in_msg="$(extract_issue_id "$first_line_in_msg")"
 
-if [[ "$id_in_msg" == "" ]] && [[ "$id_in_branch" == "" ]]; then
+if [[ "$id_in_branch" == "" ]]; then
   # No ID to match against
   exit 0
 fi
 
 if [[ "$id_in_msg" == "$id_in_branch" ]]; then
   echo "Issue ID '$id_in_branch' already found in commit message."
-elif [[ "$id_in_msg" != "" ]]; then
-  echo "WARNING: Commit message Issue ID ($id_in_msg) is not equal to current branch Issue ID ($id_in_branch)" >&2
+  exit 0
+fi
+
+if [[ "$id_in_branch" == "#"* ]]; then
+  id_in_branch="($id_in_branch)"
+fi
+
+if [[ "$id_in_msg" != "" ]]; then
+  echo "WARNING: Commit message Issue ID $id_in_msg is not equal to current branch Issue ID $id_in_branch" >&2
   echo "         Commit message will contain both" >&2
   echo "$id_in_branch $commit_msg" > "$commit_file"
 else

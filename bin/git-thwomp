@@ -4,37 +4,63 @@ readonly onto=$1
 readonly commit_msg=$2
 
 if [[ -z ${onto} ]] || [[ -z ${commit_msg} ]]; then
-    echo "Usage: git thwomp <onto-commit> <commit-msg>"
-    exit 1
+  echo "Usage: git thwomp <onto-commit> <commit-msg>"
+  exit 1
 fi
 
-readonly thwompee=${3:-$(git rev-parse --abbrev-ref HEAD)}
+thwompee=$(git rev-parse --abbrev-ref HEAD) && readonly thwompee
 fork_point=$(git merge-base --fork-point "$onto" "$thwompee")
 if [[ -z "$fork_point" ]]; then
-    # Could not find a normal fork point; $thwompee must not have branched off $onto
-    fork_point=$(git merge-base "$onto" "$thwompee")
-    if [[ -z "$fork_point" ]]; then
-        echo "Could not find fork point between ${thwompee} and ${onto}"
-        exit 2
-    fi
+  # Could not find a normal fork point; $thwompee must not have branched off $onto
+  fork_point=$(git merge-base "$onto" "$thwompee")
+  if [[ -z "$fork_point" ]]; then
+    echo "Could not find fork point between ${thwompee} and ${onto}"
+    exit 1
+  fi
 fi
+readonly fork_point
 
-set -e
-
-cleanup() {
-    git switch --quiet "$thwompee"
-}
-trap cleanup EXIT ERR INT TERM
+set -euo pipefail
 
 readonly count=$(($(git rev-list --count "$fork_point..$thwompee")))
 
-git switch --quiet "$onto" --detach
-if ! git merge -n --squash "$thwompee" > /dev/null 2>&1; then
-    if ! git merge --abort 2>/dev/null; then
-        git reset --hard HEAD
+set +e
+git rebase "$onto" # Should allow us to resolve conflicts before squashing
+rebase_status=$?
+set -e
+
+while [[ "$rebase_status" != 0 ]]; do
+  # Check if we are actually in a rebase session
+  if [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; then
+    echo "⚠️  Rebase paused due to merge conflicts."
+    if ! read -rp "Press [Enter] to continue once conflicts are resolved... "; then
+      echo "Aborting rebase." >&2
+      git rebase --abort
+      exit 1
     fi
-    echo "Merge conflict detected – merge aborted and changes reverted." >&2
-    exit 3
+    set +e
+    git rebase --continue
+    rebase_status=$?
+    set -e
+  else
+    echo "Git rebase failed due to reasons other than a standard conflict. Aborting." >&2
+    git rebase --abort
+    exit 1
+  fi
+done
+
+git switch --quiet "$onto" --detach
+cleanup() {
+  git switch --quiet "$thwompee"
+}
+trap cleanup EXIT ERR INT TERM
+
+if ! git merge -n --squash "$thwompee" > /dev/null 2>&1; then
+  if ! git merge --abort 2>/dev/null; then
+    git reset --hard HEAD
+  fi
+  echo "Merge conflict detected – merge aborted and changes reverted." >&2
+  exit 1
 fi
 git commit --quiet -nm "$commit_msg"
 git branch --quiet -f "$thwompee"
