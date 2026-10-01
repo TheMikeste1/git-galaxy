@@ -8,4 +8,4 @@ pre-commit:
       run: rustfmt --check --edition 2021 {staged_files} || (rustfmt --edition 2021 {staged_files} && false)
     clippy:
       glob: '*.rs'
-      run: cargo clippy --tests -- -D warnings -A dead_code
+      run: bash -c "$DOTFILES/git-galaxy/scripts/pre-commit/clippy.sh {staged_files}"
