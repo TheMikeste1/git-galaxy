@@ -36,10 +36,19 @@ done
 readonly commit_file="$1"
 readonly commit_msg=$(cat "$1")
 
-if [[ "$commit_msg" == "fixup"* ]]; then
-  echo "Fixup commit; not checking issue number"
-  exit 0
-fi
+shopt -s extglob
+readonly types="feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert"
+case "$commit_msg" in
+  fixup!*)
+    echo "Fixup commit; not checking issue number"
+    exit 0
+    ;;
+  @($types):*|@($types)\(*\):*)
+    echo "Not prepending against a conventional commit"
+    exit 0
+    ;;
+esac
+shopt +s extglob
 
 script_dir="$(dirname -- "${BASH_SOURCE[0]:-$0}")" && readonly script_dir
 lib_root=$script_dir/../../lib && readonly lib_root
