@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(dirname -- "${BASH_SOURCE[0]:-$0}")" && readonly script_dir
+readonly lib_root=$script_dir/../lib
+
 script_name="$0" && readonly script_name
 usage() {
   echo "Usage: $script_name [OPTIONS] <target branch?>"
@@ -41,6 +44,41 @@ while [[ $# -gt 0 ]]; do
 done
 readonly fetch
 
+extract_issue_id() {
+  "$lib_root/extract_issue_id.sh" "$@"
+}
+
+add_id_to_message() {
+  local message="$1"
+
+  local id_in_branch
+  id_in_branch="$(extract_issue_id "$current_branch")"
+  if [[ "$id_in_branch" == "" ]]; then
+    echo "$message"
+    return 0
+  fi
+
+  local origin
+  origin="$(git remote get-url origin)"
+  readonly origin
+  case "$origin" in
+    *bitbucket*)
+      if [[ "$id_in_branch" == "#"* ]]; then
+        id_in_branch="($id_in_branch)"
+      fi
+      message="$id_in_branch $message"
+      ;;
+    *)
+      message="$message
+
+Closes $id_in_branch"
+      ;;
+  esac
+
+
+  echo "$message"
+}
+
 current_branch="$(git branch --show-current)" && readonly current_branch
 declare -ra BRANCHES_TO_SKIP="${BRANCHES_TO_SKIP:=("master" "main" "develop" "test")}"
 for branch in "${BRANCHES_TO_SKIP[@]}"; do
@@ -59,27 +97,13 @@ if [[ -z "$onto" ]]; then
 fi
 readonly onto
 
+# As much as I would LOVE to extract this to its own function, `cz` must be ran
+# outside of a subshell or it won't display its prompts.
 tmp_msg="$(mktemp)"
 trap 'rm -f "$tmp_msg"' EXIT
 cz commit --dry-run --write-message-to-file "$tmp_msg"
-
-message=$(cat "$tmp_msg")
-
-script_dir="$(dirname -- "${BASH_SOURCE[0]:-$0}")" && readonly script_dir
-lib_root=$script_dir/../lib && readonly lib_root
-extract_issue_id() {
-  "$lib_root/extract_issue_id.sh" "$@"
-}
-
-id_in_branch="$(extract_issue_id "$current_branch")"
-if [[ "$id_in_branch" != "" ]]; then
-  if [[ "$id_in_branch" == "#"* ]]; then
-    id_in_branch="($id_in_branch)"
-  fi
-  message="$message
-
-Closes $id_in_branch"
-fi
+message="$(cat "$tmp_msg")"
+message="$(add_id_to_message "$message")"
 readonly message
 
 git thwomp "$onto" "$message"
