@@ -84,15 +84,8 @@ fi
 if [[ -d "./.vscode" ]]; then
   cp -r "./.vscode" "${path}/"
 fi
-if [[ -f "./lefthook.yml" ]]; then
-  cp "./lefthook.yml" "${path}/"
-  if [[ $independent == true ]]; then
-    pushd "${path}/" || exit 1
-    lefthook install
-    popd || exit 1
-  fi
-fi
 
+git -C "$path" hooks-initialize
 git -C "$path" submodule update --init --recursive --jobs="$(nproc)"
 
 if [[ $independent == true ]]; then
