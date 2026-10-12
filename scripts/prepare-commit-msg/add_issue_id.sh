@@ -48,7 +48,7 @@ case "$commit_msg" in
     exit 0
     ;;
 esac
-shopt +s extglob
+shopt -u extglob
 
 script_dir="$(dirname -- "${BASH_SOURCE[0]:-$0}")" && readonly script_dir
 lib_root=$script_dir/../../lib && readonly lib_root
