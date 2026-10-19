@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+current_origin="$(git remote get-url origin)"
+declare -r current_origin
+if [[ "$current_origin" == "https://"* ]]
+then
+  echo "Origin URL already set to HTTPS: $current_origin"
+  exit 0
+fi
+
+domain="${current_origin#git@}"
+domain="${domain//://}"
+declare -r domain
+declare -r https_url="https://$domain"
+echo "Setting origin URL to $https_url"
+git remote set-url origin "$https_url"
