@@ -1,14 +1,64 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-readonly onto=$1
-readonly commit_msg=$2
+script_name="$0" && readonly script_name
+usage() {
+  echo "Usage: $script_name [OPTIONS] [-k | -m <msg>] <onto-commit>"
+  echo '  -h, --help         Display this help message'
+  echo '  -k, --keep-message Keep the message on the first commit'
+  exit "$1"
+}
 
-if [[ -z ${onto} ]] || [[ -z ${commit_msg} ]]; then
-  echo "Usage: git thwomp <onto-commit> <commit-msg>"
-  exit 1
+keep_message=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage 0
+      ;;
+    -m)
+      if [[ -z "${commit_msg}" ]]; then
+        commit_msg="$2"
+      else
+        commit_msg="$commit_msg"$'\n\n'"$2"
+      fi
+      shift 2
+      ;;
+    -k|--keep-message)
+      if [[ -n "${commit_msg}" ]]; then
+        echo "Cannot have both $1 and -m" >&2
+        usage 2
+      fi
+      keep_message=true
+      shift 1
+      ;;
+    -*)
+      echo "Error: Unknown option $1" >&2
+      usage 1
+      ;;
+    *)
+      if [[ -z "${onto}" ]]; then
+        onto="$1"
+      else
+        echo "Error: too many onto commits" >&2
+        usage 1
+      fi
+      shift 1
+      ;;
+  esac
+done
+readonly onto
+readonly keep_message
+
+if [[ -z "${onto}" ]]; then
+  usage 2
 fi
 
 thwompee=$(git rev-parse --abbrev-ref HEAD) && readonly thwompee
+if git merge-base --is-ancestor "$thwompee" "$onto"; then
+  echo "Branch $thwompee is already part of $onto. Nothing to do."
+  exit 0
+fi
+
 fork_point=$(git merge-base --fork-point "$onto" "$thwompee")
 if [[ -z "$fork_point" ]]; then
   # Could not find a normal fork point; $thwompee must not have branched off $onto
@@ -20,7 +70,18 @@ if [[ -z "$fork_point" ]]; then
 fi
 readonly fork_point
 
-set -euo pipefail
+if [[ "$keep_message" == true ]]; then
+  first_commit=$(git log --reverse --format=%H "$fork_point..$thwompee" | head -n 1)
+  # shellcheck disable=SC2016
+  [[ -n "$first_commit" ]] || { echo 'ASSERT FAILED: -n "$first_commit"' 1>&2; exit 1; } # We've already checked that they're not in the same branch, therefore they cannot be the same.
+  commit_msg=$(git log -1 --format=%B "$first_commit")
+fi
+readonly commit_msg
+
+if [[ -z "$commit_msg" ]]; then
+  echo "Failed to provide a commit message" >&2
+  usage 2
+fi
 
 readonly count=$(($(git rev-list --count "$fork_point..$thwompee")))
 
