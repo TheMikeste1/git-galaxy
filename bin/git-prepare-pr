@@ -106,4 +106,4 @@ message="$(cat "$tmp_msg")"
 message="$(add_id_to_message "$message")"
 readonly message
 
-git thwomp "$onto" "$message"
+git thwomp "$onto" -m "$message"

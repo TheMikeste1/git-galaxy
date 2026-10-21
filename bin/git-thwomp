@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 script_name="$0" && readonly script_name
 usage() {
@@ -53,6 +52,7 @@ if [[ -z "${onto}" ]]; then
   usage 2
 fi
 
+set -euo pipefail
 thwompee=$(git rev-parse --abbrev-ref HEAD) && readonly thwompee
 if git merge-base --is-ancestor "$thwompee" "$onto"; then
   echo "Branch $thwompee is already part of $onto. Nothing to do."
